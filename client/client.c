@@ -1,27 +1,4 @@
-head	1.1;
-access;
-symbols;
-locks; strict;
-comment	@ * @;
-
-
-1.1
-date	2015.06.23.12.23.59;	author whc;	state Exp;
-branches;
-next	;
-
-
-desc
-@The client program of chatRoom.
-@
-
-
-1.1
-log
-@Initial revision
-@
-text
-@#include <stdio.h>
+#include <stdio.h>
 #include <string.h>
 #include<stdlib.h>
 #include <unistd.h>
@@ -107,4 +84,3 @@ void readFromSock(){
             sockFlag = 1;
     }
 }
-@
