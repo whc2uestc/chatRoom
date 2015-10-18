@@ -15,10 +15,24 @@ char readBuff[1024] = {0};
 char writeBuff[1024] = {0};
 int stdFlag = 0;
 int sockFlag = 0;
-int main(){
+int main(int argc,char *argv[]){
     char pName[10];
     int sockfd;
     struct sockaddr_in servAddr;
+	
+	char ipaddr[16] = "127.0.0.1";
+	int port = 65400;
+	if(argc != 3 && argc != 1){
+		printf("input error!!!");
+		exit(1);
+	}
+	else if(argc == 3){
+		memset(ipaddr,0,sizeof(ipaddr));
+		strcpy(ipaddr,argv[1]);
+		sscanf(argv[2],"%d",&port);
+	}
+	
+	printf("%s %d",ipaddr,port);
 
     if((sockfd=socket(AF_INET,SOCK_STREAM,0)) < 0){
         exit(0);    
@@ -27,8 +41,8 @@ int main(){
     
     bzero(&servAddr,sizeof(servAddr));
     servAddr.sin_family = AF_INET;
-    servAddr.sin_port = htons(65400);
-    servAddr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    servAddr.sin_port = htons(port);
+    servAddr.sin_addr.s_addr = inet_addr(ipaddr);
     if(bind(sockfd,(struct sockaddr*)&servAddr,sizeof(struct sockaddr)) < 0){
         exit(0);
     }
