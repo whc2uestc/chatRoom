@@ -6,18 +6,17 @@
 #include <arpa/inet.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-
 #include <pthread.h>
-void readFromStd();
-void readFromSock();
-        int acceptfd;
-char readBuff[1024] = {0};
-char writeBuff[1024] = {0};
-int stdFlag = 0;
-int sockFlag = 0;
+
+#include "handle.h"
+#include "init.h"
+
+static char readBuff[1024] = {0};
+static char writeBuff[1024] = {0};
 int main(int argc,char *argv[]){
-    char pName[10];
+    char pName[10] = {0};
     int sockfd;
+	int acceptfd;
     struct sockaddr_in servAddr;
 	
 	char ipaddr[16] = "127.0.0.1";
@@ -33,6 +32,8 @@ int main(int argc,char *argv[]){
 	}
 	
 	printf("%s %d",ipaddr,port);
+	
+	init();
 
     if((sockfd=socket(AF_INET,SOCK_STREAM,0)) < 0){
         exit(0);    
@@ -60,52 +61,27 @@ int main(int argc,char *argv[]){
         }
         printf("accept ok!\n");
         
-        if(read(acceptfd,readBuff,1024) > 0){
-                strcpy(pName,&readBuff[7]);
-                if(write(acceptfd,"LOGIN OK",10) > 0)
-                    printf("*********%s已登录**********\n",pName);
-        }
-        memset(readBuff,0,sizeof(readBuff));
-        pthread_t thrdStd,thrdSock;
-        pthread_create(&thrdStd,NULL,(void*)readFromStd,NULL);
-        pthread_create(&thrdSock,NULL,(void*)readFromSock,NULL);
-        //if(fork() == 0){
-        while(1){
-            if(sockFlag == 1){
-		        sockFlag = 0;
 
-	            printf("%s:%s\n",pName,readBuff);
-	            if(strstr(readBuff,"EXIT")){
-	                exit(0);
-	            }
-                memset(readBuff,0,sizeof(readBuff));
-		    }
-                
-		    if(stdFlag == 1){
-		        stdFlag = 0;
-                if(write(acceptfd,writeBuff,strlen(writeBuff)) > 0)
-                    //printf("write ok!\n");
-                if(strstr(writeBuff,"EXIT")){
-                    exit(0);
-                }
-                memset(writeBuff,0,sizeof(writeBuff));
-		    }
+
+        if(read(acceptfd,readBuff,1024) > 0){
+                strcpy(pName,&readBuff[6]);
+				printf("%s\n",pName);
+				if(do_login(pName,"127.0.0.1",0,acceptfd) > 0){
+                	if(write(acceptfd,"LOGIN OK",10) > 0)
+                    	printf("*********%s已登录**********\n",pName);
+				}
         }
-        //}
-        close(acceptfd);
+		//pthread_t thrd;
+		//pthread_create(&thrd,NULL,(void*)sub_process,NULL);
+
+		pid_t pid;
+		if((pid=fork()) == 0){
+			sub_process(pName,acceptfd);
+			exit(0);
+		}
+        
     } 
     close(sockfd);
     return 0;
 }
-void readFromStd(){
-    while(1){
-        gets(writeBuff);
-        stdFlag = 1;
-    }
-}
-void readFromSock(){
-    while(1){
-        if(read(acceptfd,readBuff,1024) > 0)
-            sockFlag = 1;
-    }
-}
+
