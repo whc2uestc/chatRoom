@@ -1,6 +1,5 @@
 #ifndef CONFIG_H_
 #define CONFIG_H_
-
 /* 
  * the information of the user online.
  * include ip,port and name.
@@ -37,7 +36,7 @@ typedef struct UserList{
 /*
  * the global variable of the online users list.
  */
-UserList uList; 
+UserList *uList; 
 
 
 #endif
