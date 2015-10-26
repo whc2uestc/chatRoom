@@ -1,3 +1,10 @@
+/*
+ * handle.c
+ * Author:whc
+ * Date:2015.10.26
+ * Description: Deal with the client's affairs.
+ */
+
 #include "config.h"
 #include "handle.h"
 #include <stdlib.h>
@@ -6,6 +13,9 @@
 #include <unistd.h>
 #include <pthread.h>
 
+/*
+ * alloc a new node of UserNode.
+ */
 UserNode* alloc_node(){
 	UserNode *pNode = (UserNode*)malloc(sizeof(UserNode));
 	if(NULL != pNode){
@@ -20,8 +30,9 @@ UserNode* alloc_node(){
 	return pNode;
 }
 
-
-
+/*
+ * deal with the affair of login.
+ */
 int do_login(char *name,char *ipaddr,int port,int fd){
 	UserNode *pNode = alloc_node();
 	if(NULL == pNode)
@@ -34,11 +45,15 @@ int do_login(char *name,char *ipaddr,int port,int fd){
 		uList->head = uList->tail = pNode;
 	else{
 		uList->tail->next = pNode;
+		uList->tail = pNode;
 	}
 	uList->online_number ++;
 	return 1;
 }
 
+/*
+ * deal with the affair of log out.
+ */
 void do_logout(char *name,char *ipaddr,int port){
 	UserNode *pNode = uList->head;
 	UserNode *pPre  = pNode;
@@ -71,21 +86,9 @@ void do_logout(char *name,char *ipaddr,int port){
 	uList->online_number --;
 }
 
-/*void do_chat_public(char *name,char *message){
-	UserNode *pNode = uList->head;
-	char *msg = (char*)malloc(strlen(name)+strlen(message)+2);
-	memset(msg,0,strlen(name)+strlen(message)+2);
-	strcat(msg,name);
-	strcat(msg,":");
-	strcat(msg,message);
-	while(pNode->next){
-		if(strcmp(pNode->user->name,name) != 0){
-			write(pNode->user->acceptfd,msg,strlen(name)+strlen(message)+2);
-		}
-		pNode = pNode->next;
-	}
-	free(msg);
-}*/
+/*
+ * chat in the public channel.
+ */
 void do_chat_public(UserNode *pSender,char *name,char *message){
 	UserNode *pNode = uList->head;
 	char *msg = (char*)malloc(strlen(name)+strlen(message)+2);
@@ -93,8 +96,7 @@ void do_chat_public(UserNode *pSender,char *name,char *message){
 	strcat(msg,name);
 	strcat(msg,":");
 	strcat(msg,message);
-	printf("chat_public:%s\n",msg);
-	while(pNode->next){
+	while(pNode){
 		if(pNode != pSender){
 			write(pNode->user->acceptfd,msg,strlen(name)+strlen(message)+2);
 		}
@@ -103,94 +105,82 @@ void do_chat_public(UserNode *pSender,char *name,char *message){
 	free(msg);
 }
 
-
-
-char* do_chat_private(char *name,char *message){
-
-
+/*
+ * chat in the private channel.
+ */
+void do_chat_private(char *fromName,char *toName,char *message){
+	UserNode *pNode = uList->head;
+	char *msg = (char*)malloc(strlen(fromName)+strlen(message)+2);
+	memset(msg,0,strlen(fromName)+strlen(message)+2);
+	strcat(msg,fromName);
+	int index = 0;
+	while(message[index]!=':')
+		index ++;
+	
+	strcat(msg,&message[index]);
+	while(pNode){
+		if(0==strcmp(pNode->user->name,toName)){
+			write(pNode->user->acceptfd,msg,strlen(msg)+1);
+		}
+		pNode = pNode->next;
+	}
 }
 
-static char readBuff[1024] = {0};
-static char writeBuff[1024] = {0};
-static int stdFlag = 0;
-static int sockFlag = 0;
-void readFromStd(){
-    while(1){
-        gets(writeBuff);
-        stdFlag = 1;
-    }
-}
-static int acptfd;
-void readFromSock(){
-    while(1){
-		printf("acceptfd:%d\n",acptfd);
-        if(read(acptfd,readBuff,1024) > 0)
-            sockFlag = 1;
-		printf("read data from socket!!\n");
-    }
+/*
+ * check if the chat is in the private channel or not.
+ */
+int check_if_private(char *name,char *message){
+	if(NULL==name || NULL==message)
+		return 0;
+	if(message[0] == '#'){
+		int index = 1;
+		while(message[index] != '\0'){
+			if(message[index] == ':' && index > 1)
+				return 1;
+			name[index-1] = message[index++];
+		}
+	}
+	return 0;
 }
 
+/*
+ * get all the list name.
+ */
+void get_list_name(char *buf){
+	UserNode *pNode = uList->head;
+	while(pNode){
+		strcat(buf,pNode->user->name);
+		strcat(buf,"\n");
+		pNode = pNode->next;
+	}
+}
+
+/*
+ * the sub process to deal with the client.
+ */
 void sub_process(){
 		UserNode *pNode = uList->tail;
 		char *pName = pNode->user->name;
+		char toName[20] = {0};
 		int acceptfd = pNode->user->acceptfd;
-		acptfd = acceptfd;
-    	memset(readBuff,0,sizeof(readBuff));
-        pthread_t thrdStd,thrdSock;
-        pthread_create(&thrdStd,NULL,(void*)readFromStd,NULL);
-        pthread_create(&thrdSock,NULL,(void*)readFromSock,NULL);
+    	char readBuff[1024] = {0};
+		printf("into sub process:%s %d\n",pName,acceptfd);
         while(1){
-            if(sockFlag == 1){
-		        sockFlag = 0;
-				
+        	if(read(acceptfd,readBuff,1024) > 0){
 	            printf("%s:%s\n",pName,readBuff);
-	            if(strstr(readBuff,"EXIT")){
+	            if(strstr(readBuff,"#EXIT")){
 	                exit(0);
-	            }else
+	            }else if(readBuff==strstr(readBuff,"#LIST")){
+					memset(readBuff,0,sizeof(readBuff));
+					get_list_name(readBuff);
+					write(acceptfd,readBuff,strlen(readBuff)+1);
+				}else if(check_if_private(toName,readBuff)){
+					do_chat_private(pName,toName,readBuff);
+				}else
 					do_chat_public(pNode,pName,readBuff);
                 memset(readBuff,0,sizeof(readBuff));
-		    }
-                
-		    if(stdFlag == 1){
-		        stdFlag = 0;
-                if(write(acceptfd,writeBuff,strlen(writeBuff)) > 0)
-                    //printf("write ok!\n");
-                if(strstr(writeBuff,"EXIT")){
-                    exit(0);
-                }
-                memset(writeBuff,0,sizeof(writeBuff));
-		    }
+			}
         }
         close(acceptfd);	
 
 }
-/*void sub_process(char *pName,int acceptfd){
-		acptfd = acceptfd;
-    	memset(readBuff,0,sizeof(readBuff));
-        pthread_t thrdStd,thrdSock;
-        pthread_create(&thrdStd,NULL,(void*)readFromStd,NULL);
-        pthread_create(&thrdSock,NULL,(void*)readFromSock,NULL);
-        while(1){
-            if(sockFlag == 1){
-		        sockFlag = 0;
-				
-	            printf("%s:%s\n",pName,readBuff);
-	            if(strstr(readBuff,"EXIT")){
-	                exit(0);
-	            }
-                memset(readBuff,0,sizeof(readBuff));
-		    }
-                
-		    if(stdFlag == 1){
-		        stdFlag = 0;
-                if(write(acceptfd,writeBuff,strlen(writeBuff)) > 0)
-                    //printf("write ok!\n");
-                if(strstr(writeBuff,"EXIT")){
-                    exit(0);
-                }
-                memset(writeBuff,0,sizeof(writeBuff));
-		    }
-        }
-        close(acceptfd);	
-
-}*/
