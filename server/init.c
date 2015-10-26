@@ -1,3 +1,9 @@
+/*
+ * init.c
+ * Author:whc
+ * Date:2015.10.20
+ * Description:the initial code of chat room in server.
+ */
 #include <stdlib.h>
 #include "config.h"
 #include "init.h"
