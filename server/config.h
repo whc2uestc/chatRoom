@@ -1,3 +1,9 @@
+/*
+ * config.h
+ * Author:whc
+ * Date:2015.7.20
+ */
+
 #ifndef CONFIG_H_
 #define CONFIG_H_
 /* 
