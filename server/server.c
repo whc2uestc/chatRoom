@@ -1,3 +1,10 @@
+/*
+ * server.c
+ * Author: whc
+ * Date: 2010.7.20
+ * Description: a simple chat room implementation code in the server.
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -71,14 +78,14 @@ int main(int argc,char *argv[]){
                     	printf("*********%s已登录**********\n",pName);
 				}
         }
-		//pthread_t thrd;
-		//pthread_create(&thrd,NULL,(void*)sub_process,NULL);
+		pthread_t thrd;
+		pthread_create(&thrd,NULL,(void*)sub_process,NULL);
 
-		pid_t pid;
+		/*pid_t pid;
 		if((pid=fork()) == 0){
 			sub_process(pName,acceptfd);
 			exit(0);
-		}
+		}*/
         
     } 
     close(sockfd);
