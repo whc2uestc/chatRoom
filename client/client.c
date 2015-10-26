@@ -1,3 +1,10 @@
+/*
+ * client.c
+ * Author:whc
+ * Date:2015.7.20
+ * Description: a simple chat room implementation code of client.
+ */
+
 #include <stdio.h>
 #include <string.h>
 #include<stdlib.h>
